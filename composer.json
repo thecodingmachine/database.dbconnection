@@ -1,0 +1,23 @@
+{
+    "name": "mouf/database.dbconnection",
+    "description": "This package contains object to perform database connections. Connections are performed using the PDO library. Therefore, the PDO extension must be enabled to use this package. This package will allow you to connect to MySql and PostgreSql databases. The DB Connection class has special features to help you get informations about the database schema, and especially about the constraints between tables.",
+    "keywords": ["mouf", "database", "dbconnection"],
+    "homepage": "https://github.com/thecodingmachine/database.dbconnection",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "David Négrier",
+            "email": "d.negrier@thecodingmachine.com",
+            "homepage": "http://mouf-php.com"
+        }
+    ],
+    "require": {
+    	"php": ">=5.3.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "Mouf": "src/"
+        }
+    }
+}

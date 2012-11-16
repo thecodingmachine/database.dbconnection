@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package>
+	<displayName>DB Connection</displayName>
+	<shortDescription>This package contains object to perform database connections. Connections are performed
+	using the PDO library. Therefore, the PDO extension must be enabled to use this package. This package
+	will allow you to connect to MySql and PostgreSql databases.
+	The DB Connection class has special features to help you get informations about the database schema,
+	and especially about the constraints between tables.</shortDescription>
+	<docUrl></docUrl>
+	<logo>icons/database.png</logo>
+	<dependencies>
+	</dependencies>
+	<requires>
+		<require>DB_Column.php</require>
+		<require>DB_Table.php</require>
+		<require>DB_ConnectionSettingsInterface.php</require>
+		<require>DB_ConnectionInterface.php</require>
+		<require>DB_Exception.php</require>
+		<require>Mouf_DBConnection.php</require>
+		<require>DB_MySqlConnection.php</require>
+		<require>DB_PgSqlConnection.php</require>
+		<require>DB_CachedConnection.php</require>
+	</requires>
+	<adminRequires>
+		<require>DbConnectionAdmin.php</require>
+		<require>controllers/MySqlConnectionEditController.php</require>
+		<require>controllers/DbConnectionInstallController.php</require>
+		<require>DB_Column.php</require>
+		<require>DB_Table.php</require>
+		<require>DB_ConnectionSettingsInterface.php</require>
+		<require>DB_ConnectionInterface.php</require>
+		<require>DB_Exception.php</require>
+		<require>DB_ConnectionProxy.php</require>
+	</adminRequires>
+	<install>
+		<!--  <file>direct/install.php</file>  -->
+		<url>mouf/dbconnectioninstall/</url>
+	</install>
+</package>
