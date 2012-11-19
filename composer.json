@@ -21,11 +21,16 @@
         }
     },
     "extra": {
-    	"install": [
-    		{
-    			"type": "url",
-    			"url": "dbconnectioninstall"
-    		}
-    	]
+    	"mouf": {
+	    	"install": [
+	    		{
+	    			"type": "url",
+	    			"url": "dbconnectioninstall"
+	    		}
+	    	],
+    		"require-admin": [
+    			"src/DbConnectionAdmin.php"
+    		]
+    	}
     }
 }
