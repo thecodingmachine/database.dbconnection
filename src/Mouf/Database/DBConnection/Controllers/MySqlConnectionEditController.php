@@ -1,5 +1,5 @@
 <?php
-namespace Mouf\Database\DBConnection;
+namespace Mouf\Database\DBConnection\Controllers;
 
 use Mouf\Controllers\AbstractMoufInstanceController;
 
