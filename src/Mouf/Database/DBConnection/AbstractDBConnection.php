@@ -2,6 +2,8 @@
 namespace Mouf\Database\DBConnection; 
 
 use PDO;
+use Exception;
+use PDOException;
 
 /**
  * An abstract class representing wrapping a connection to PDO with additional goodies (introspection support)
