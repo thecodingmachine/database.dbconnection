@@ -34,7 +34,7 @@ if (get_magic_quotes_gpc()==1)
 }
 
 $dbConnection = MoufManager::getMoufManager()->getInstance($instance);
-/* @var $dbConnection DB_ConnectionInterface */
+/* @var $dbConnection ConnectionInterface */
 
 $result = call_user_func_array(array($dbConnection, $method), unserialize($args));
 

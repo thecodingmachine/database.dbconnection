@@ -10,8 +10,8 @@
 </ul>
 
 <form action="configure">
-	<button>Configure database connection</button>
+	<button class="btn btn-danger">Configure database connection</button>
 </form>
 <form action="skip">
-	<button>Skip</button>
+	<button class="btn">Skip</button>
 </form>

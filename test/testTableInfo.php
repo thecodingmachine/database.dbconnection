@@ -1,15 +1,15 @@
 <?php 
-require_once("../../../dbconnectionsettings/1.0/DB_ConnectionSettings.php");
-require_once("../DB_MySqlConnection.php");
-require_once("../DB_PgSqlConnection.php");
+require_once("../../../dbconnectionsettings/1.0/ConnectionSettings.php");
+require_once("../MySqlConnection.php");
+require_once("../PgSqlConnection.php");
 
-$conn = new DB_MySqlConnection();
+$conn = new MySqlConnection();
 $conn->host = "localhost";
 $conn->dbname = "test";
 $conn->user = "root";
 $conn->connect();
 
-/*$connPg = new DB_PgSqlConnection();
+/*$connPg = new PgSqlConnection();
 $connPg->host = "localhost";
 $connPg->dbname = "demo";
 $connPg->user = "demo";

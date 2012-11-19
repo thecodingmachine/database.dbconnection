@@ -25,7 +25,7 @@
 	    	"install": [
 	    		{
 	    			"type": "url",
-	    			"url": "dbconnectioninstall"
+	    			"url": "dbconnectioninstall/"
 	    		}
 	    	],
     		"require-admin": [

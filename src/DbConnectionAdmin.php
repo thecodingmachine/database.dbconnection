@@ -6,5 +6,6 @@ MoufManager::getMoufManager()->declareComponent('mysqlconnectionedit', 'Mouf\\Da
 MoufManager::getMoufManager()->bindComponents('mysqlconnectionedit', 'template', 'moufTemplate');
 
 MoufManager::getMoufManager()->declareComponent('dbconnectioninstall', 'Mouf\\Database\\DBConnection\\Controllers\\DbConnectionInstallController', true);
-MoufManager::getMoufManager()->bindComponents('dbconnectioninstall', 'template', 'installTemplate');
+MoufManager::getMoufManager()->bindComponents('dbconnectioninstall', 'template', 'moufInstallTemplate');
+MoufManager::getMoufManager()->bindComponents('dbconnectioninstall', 'contentBlock', 'block.content');
 ?>

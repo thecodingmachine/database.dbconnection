@@ -1,6 +1,12 @@
 <?php
 namespace Mouf\Database\DBConnection\Controllers;
 
+use Mouf\Database\DBConnection\MySqlConnection;
+
+use Mouf\Actions\InstallUtils;
+
+use Mouf\MoufManager;
+
 use Mouf\Mvc\Splash\Controllers\Controller;
 
 /**
@@ -29,6 +35,15 @@ class DbConnectionInstallController extends Controller  {
 	public $template;
 	
 	/**
+	 * The content block the template will be writting into.
+	 *
+	 * @Property
+	 * @Compulsory
+	 * @var HtmlBlock
+	 */
+	public $contentBlock;
+	
+	/**
 	 * Displays the first install screen.
 	 * 
 	 * @Action
@@ -44,8 +59,8 @@ class DbConnectionInstallController extends Controller  {
 			$this->moufManager = MoufManager::getMoufManagerHiddenInstance();
 		}
 				
-		$this->template->addContentFile(dirname(__FILE__)."/../views/installStep1.php", $this);
-		$this->template->draw();
+		$this->contentBlock->addFile(dirname(__FILE__)."/../../../../views/installStep1.php", $this);
+		$this->template->toHtml();
 	}
 	
 	/**
@@ -87,8 +102,8 @@ class DbConnectionInstallController extends Controller  {
 		$this->user = "root";
 		$this->password = "";
 				
-		$this->template->addContentFile(dirname(__FILE__)."/../views/installStep2.php", $this);
-		$this->template->draw();
+		$this->contentBlock->addFile(dirname(__FILE__)."/../../../../views/installStep2.php", $this);
+		$this->template->toHtml();
 	}
 	
 	
@@ -133,7 +148,7 @@ class DbConnectionInstallController extends Controller  {
 		}
 		
 		if (!$moufManager->instanceExists("dbConnection")) {
-			$moufManager->declareComponent("dbConnection", "DB_MySqlConnection");
+			$moufManager->declareComponent("dbConnection", "Mouf\\Database\\DBConnection\\MySqlConnection");
 			$moufManager->setParameter("dbConnection", "host", "DB_HOST", "config");
 			$moufManager->setParameter("dbConnection", "port", "DB_PORT", "config");
 			$moufManager->setParameter("dbConnection", "user", "DB_USERNAME", "config");
@@ -165,17 +180,17 @@ class DbConnectionInstallController extends Controller  {
 	 * @param string $password
 	 */
 	public function getDbList($host, $port, $user, $password) {
-		require_once dirname(__FILE__).'/../DB_Column.php';
-		require_once dirname(__FILE__).'/../DB_Table.php';
-		require_once dirname(__FILE__).'/../DB_ConnectionSettingsInterface.php';
-		require_once dirname(__FILE__).'/../DB_ConnectionInterface.php';
-		require_once dirname(__FILE__).'/../DB_Exception.php';
-		require_once dirname(__FILE__).'/../Mouf_DBConnection.php';
-		require_once dirname(__FILE__).'/../DB_MySqlConnection.php';
+		/*require_once dirname(__FILE__).'/../Column.php';
+		require_once dirname(__FILE__).'/../Table.php';
+		require_once dirname(__FILE__).'/../ConnectionSettingsInterface.php';
+		require_once dirname(__FILE__).'/../ConnectionInterface.php';
+		require_once dirname(__FILE__).'/../DBConnectionException.php';
+		require_once dirname(__FILE__).'/../AbstractDBConnection.php';
+		require_once dirname(__FILE__).'/../MySqlConnection.php';*/
 				
 		
 		
-		$conn = new DB_MySqlConnection();
+		$conn = new MySqlConnection();
 		$conn->host = $host;
 		$conn->port = (!empty($port))?$port:null;
 		$conn->user = $user;
