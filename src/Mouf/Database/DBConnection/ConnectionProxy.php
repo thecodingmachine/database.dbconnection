@@ -1,6 +1,8 @@
 <?php
 namespace Mouf\Database\DBConnection;
 
+use PDO;
+
 /**
  * This class can be used to proxy requests from one machine to another.
  * It is also pretty usefull when you want to access the database of your application from
@@ -380,7 +382,7 @@ class ConnectionProxy implements ConnectionInterface {
     /**
      * Returns true of name passed in parameter matches the sequence name pattern.
      * 
-     * @param $sqn
+     * @param string $sqn
      * @return boolean
      */
     public function isSequenceName($sqn) {
@@ -495,7 +497,7 @@ class ConnectionProxy implements ConnectionInterface {
 	 * - datetime
 	 * - date
 	 * 
-	 * @param $type string
+	 * @param string $type
 	 * @return string
 	 */
 	public function getUnderlyingType($type) {
@@ -505,7 +507,7 @@ class ConnectionProxy implements ConnectionInterface {
 	/**
 	 * Escape the table name and column name with the special char that depends of database type
 	 * 
-	 * @param $string string
+	 * @param string $string
 	 * @return string
 	 */
 	public function escapeDBItem($string) {

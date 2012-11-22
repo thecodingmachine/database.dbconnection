@@ -1,6 +1,8 @@
 <?php
 namespace Mouf\Database\DBConnection; 
 
+use PDO;
+
 /**
  * This class can be used to cache the requests describing the database model.
  * 

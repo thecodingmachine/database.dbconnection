@@ -1,6 +1,8 @@
 <?php
 namespace Mouf\Database\DBConnection; 
 
+use PDO;
+
 /**
  * Database connections must implement this interface.
  *
