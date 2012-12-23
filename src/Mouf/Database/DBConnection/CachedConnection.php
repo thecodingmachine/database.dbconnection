@@ -11,6 +11,7 @@ use PDO;
  */
 class CachedConnection implements ConnectionInterface {
 	
+	// FIXME: WHY THE HELL IS THE CACHE_KEY STATIC??????
 	private static $CACHE_KEY = "__Connection__";
 	
 	/**
