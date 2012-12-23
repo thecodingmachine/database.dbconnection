@@ -8,6 +8,7 @@ use PDOException;
  * A class wrapping a connection to a PgSQL database through PDO, with additional goodies (introspection support)
  *
  * @Component
+ * @Renderer { "smallLogo":"vendor/mouf/database.dbconnection/icons/database_small.png" }
  */
 class PgSqlConnection extends AbstractDBConnection {
 	

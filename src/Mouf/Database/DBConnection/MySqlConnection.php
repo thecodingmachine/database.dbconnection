@@ -9,7 +9,7 @@ use PDOException;
  *
  * @Component
  * // @ExtendedAction {"name":"Edit", "url":"mouf/mysqlconnectionedit/", "default":true}
- * @Logo "mylogo.png"
+ * @Renderer { "smallLogo":"vendor/mouf/database.dbconnection/icons/database_small.png" }
  */
 class MySqlConnection extends AbstractDBConnection {
 	
