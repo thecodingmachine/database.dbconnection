@@ -5,31 +5,42 @@ use PDO;
 use PDOException;
 
 /**
- * A class wrapping a connection to a PgSQL database through PDO, with additional goodies (introspection support)
+ * A class wrapping a connection to a SQLServer database through PDO/ODBC, with additional goodies (introspection support)
  *
  * @Component
  * @Renderer { "smallLogo":"vendor/mouf/database.dbconnection/icons/database_small.png" }
  */
-class PgSqlConnection extends AbstractDBConnection {
+class MsSqlConnection extends AbstractDBConnection {
 	
 	/**
-	 * The host for the database.
-	 * This is the IP or the URL of the server hosting the database.
+	 * The name of the ODBC driver to access SQL Server.
+	 * <p>On Windows, you can find that name by:</o>
+	 * <ul><li>Starting the "ODBC datasources" application</li>
+	 * <li>Going in the "ODBC Drivers" tab</li>
+	 * <li>Selecting the appropriate driver in the "Name" column</li></ul>
 	 *
-	 * @Property
-	 * @Compulsory
+	 * <p>Put the text inside {} if it contains spaces.</p>
+	 * 
+	 * <p>Default value for SQL Server 2012 is {SQL Server Native Client 11.0}</p>
+	 *
 	 * @var string
 	 */
-	public $host;
+	public $odbcDriver = "{SQL Server Native Client 11.0}";
 	
 	/**
-	 * The port for the database.
-	 * Keep empty to use default port.
+	 * The server IP address or name.
+	 * You can use "(local)" if the server if on your machine 
 	 *
-	 * @Property
-	 * @var int
+	 * @var string
 	 */
-	public $port;
+	public $host = "(local)";
+	
+	/**
+	 * The name of the instance of the database.
+	 * 
+	 * @var string
+	 */
+	public $instance = "SQLEXPRESS";
 	
 	/**
 	 * Database user to use when connecting.
@@ -37,7 +48,7 @@ class PgSqlConnection extends AbstractDBConnection {
 	 * @Property
 	 * @var string
 	 */
-	public $user;
+	public $user = "sa";
 	
 	/**
 	 * Password to use when connecting.
@@ -48,15 +59,14 @@ class PgSqlConnection extends AbstractDBConnection {
 	public $password;
 	
 	/**
-	 * Charset used to communicate with the database.
-	 * The database will translate any string into this charset before sending us the string.
-	 * If not set, this will default to UTF-8
-	 *
-	 * @Property
+	 * Keep this parameter empty.
+	 * You can optionnally set it and it will completely OVERRIDE all parameters used to
+	 * create the connection to the database.
+	 * 
 	 * @var string
 	 */
-	//public $charset;
-	
+	public $fullOdbcString;
+
 	/**
 	 * Whether a persistent connection is used or not.
 	 * If this application is used on the web, you should choose yes. The database connection
@@ -65,7 +75,6 @@ class PgSqlConnection extends AbstractDBConnection {
 	 *
 	 * This defaults to "true"
 	 * 
-	 * @Property
 	 * @var boolean
 	 */
 	public $isPersistentConnection;
@@ -76,20 +85,16 @@ class PgSqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function getDsn() {
-		if ($this->dbname) {
-			$dsn = "pgsql:host=".$this->host.";dbname=".$this->dbname.";";
+		if ($this->fullOdbcString) {
+			$dsn = $this->fullOdbcString;
 		} else {
-			$dsn = "pgsql:host=".$this->host.";dbname=template0;";
+			$dsn = "odbc:Driver=".$this->odbcDriver.";Server=".$this->host;
+			if ($this->instance) {
+				$dsn .= "\\".$this->instance;
+			}
+			$dsn .= ";Database=".$this->dbname.";Uid=".$this->user.";Pwd=".$this->password.";";
 		}
-		if (!empty($this->port)) {
-			$dsn .= "port=".$this->port.";";
-		}
-		/*$charset = $this->charset;
-		if (empty($charset)) {
-			$charset = "UTF-8";
-		}
-		$dsn .= "charset=".$charset.";";
-		*/
+		
 		return $dsn;
 	}
 
@@ -524,7 +529,41 @@ class PgSqlConnection extends AbstractDBConnection {
 	public function escapeDBItem($string) {
 		return '['.$string.']';
 	}
-}
+	
+	/**
+	 * Returns a list of table names.
+	 *
+	 * 
+	 * @param $ignoreSequences boolean: for some databases, sequences are managed with tables. If true, those tables will be ignored. Default is true.
+	 * @return array<string>
+	 */
+	public function getListOfTables($ignoreSequences = true) {
+		$str = "SELECT table_name FROM information_schema.TABLES WHERE table_catalog = ".$this->quoteSmart($this->dbname)." AND table_type = 'BASE TABLE';";
 
+		$res = $this->getAll($str);
+		$array = array();
+		foreach ($res as $table) {
+			if (!$ignoreSequences || !$this->isSequenceName($table['table_name'])) {
+				$array[] = $table['table_name'];
+			}
+		}
+
+		return $array;
+	}
+	
+	/**
+	 * Protects the string (by adding \ in front of '), or returns the string NULL if value passed is null.
+	 * TODO: Migrate to use prepared statements!!
+	 *
+	 * @param string $in
+	 * @return string
+	 */
+	public function quoteSmart($in) {
+		// Note: $this->dbh->quote is completely broken with ODBC driver...
+		// So we need to overload this function
+		
+		return "'".addslashes($in)."'";
+	}
+}
 
 ?>

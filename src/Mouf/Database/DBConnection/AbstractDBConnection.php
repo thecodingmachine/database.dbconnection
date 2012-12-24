@@ -4,6 +4,7 @@ namespace Mouf\Database\DBConnection;
 use PDO;
 use Exception;
 use PDOException;
+use Mouf\Utils\Log\LogInterface;
 
 /**
  * An abstract class representing wrapping a connection to PDO with additional goodies (introspection support)
@@ -217,6 +218,7 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 		if ($in === null) {
 			return 'NULL';
 		}
+		
 		return $this->dbh->quote($in);
 	}
 
