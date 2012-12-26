@@ -147,18 +147,9 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function findRootSequenceTable($table_name){
-		
-		$child_table = $table_name;
-		$root_table = $table_name;
-		while ($parent_table=$this->getParentTable($child_table)) {
-			$root_table = $parent_table;
-			$child_table = $parent_table;
-		}
-		if ($root_table != null)
-		return $root_table;
-	
+		return $table_name;
 	}
-	
+		
 	/**
 	 * Returns the parent table (if the table inherits from another table).
 	 * For DB systems that do not support inheritence, returns the table name.
@@ -167,22 +158,10 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function getParentTable($table_name){
-		$sql = "SELECT par.relname as parent_table FROM pg_class tab
-				Left JOIN pg_inherits inh  ON inh.inhrelid = tab.oid 
-				left JOIN pg_class par ON inh.inhparent = par.oid 
-				WHERE tab.relname='$table_name'";
-
-		$result = $this->getAll($sql);
-		if (count($result)==1) {
-			$result = $result[0]['parent_table'];
-		}elseif (count($result)==0){
-			$result = null;
-		}else{
-			throw new TDBM_Exception('Several parents found for table '.$table_name.'<br />\n
-					-> Error : this behavior is not managed by TDBM.');
-		}
-		return $result;
+		// No inheritance for Mssql
+		return $table_name;
 	}
+
 	
 	/**
 	 * Returns the constraints on table "table_name" and column "column_name" if "column_name"is given
@@ -197,23 +176,48 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function getConstraintsOnTable($table_name,$column_name=false) {
 		if ($column_name)
 		{
-			$sql = "SELECT t1.relname AS table2, c1.attname AS col2, c2.attname AS col1 FROM
-				pg_attribute c2 JOIN pg_class t2 JOIN
-				(pg_constraint con JOIN 
-				(pg_class t1 JOIN pg_attribute c1 ON t1.oid = c1.attrelid)
-				ON con.conrelid = t1.oid AND con.conkey[1]=c1.attnum)
-				ON t2.oid = con.confrelid ON c2.attrelid = t2.oid AND con.confkey[1]=c2.attnum
-			WHERE t2.relname='$table_name' AND c2.attname='$column_name'";
+			$sql = "SELECT k.table_name table2,
+			k.column_name col2,
+			ccu.column_name col1
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND ccu.table_name=".$this->quoteSmart($table_name)." AND ccu.column_name=".$this->quoteSmart($column_name)." AND c.constraint_type = 'FOREIGN KEY'";
+			
 		}
 		else
 		{
-			$sql = "SELECT t1.relname AS table2, c1.attname AS col2, c2.attname AS col1 FROM
-				pg_attribute c2 JOIN pg_class t2 JOIN
-				(pg_constraint con JOIN 
-				(pg_class t1 JOIN pg_attribute c1 ON t1.oid = c1.attrelid)
-				ON con.conrelid = t1.oid AND con.conkey[1]=c1.attnum)
-				ON t2.oid = con.confrelid ON c2.attrelid = t2.oid AND con.confkey[1]=c2.attnum
-			WHERE t2.relname='$table_name'";
+			$sql = "SELECT k.table_name table2,
+			k.column_name col2,
+			ccu.column_name col1
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND ccu.table_name=".$this->quoteSmart($table_name)." AND c.constraint_type = 'FOREIGN KEY'";
 		}
 
 		$result = $this->getAll($sql);
@@ -231,26 +235,53 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @param string $column_name
 	 * @return unknown
 	 */
-	function getConstraintsFromTable($table_name,$column_name=false) {
-		if ($column_name)
+	public function getConstraintsFromTable($table_name,$column_name=false) {
+	if ($column_name)
 		{
-			$sql = "SELECT t2.relname AS table1, c2.attname AS col1, c1.attname AS col2 FROM
-				pg_attribute c2 JOIN pg_class t2 JOIN
-				(pg_constraint con JOIN 
-				(pg_class t1 JOIN pg_attribute c1 ON t1.oid = c1.attrelid)
-				ON con.conrelid = t1.oid AND con.conkey[1]=c1.attnum)
-				ON t2.oid = con.confrelid ON c2.attrelid = t2.oid AND con.confkey[1]=c2.attnum
-			WHERE t1.relname='$table_name' AND c1.attname='$column_name'";
+			$sql = "SELECT k.column_name col2,
+			ccu.table_name table1,
+			ccu.column_name col1,
+			k.ordinal_position 'field_position'
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND k.table_name=".$this->quoteSmart($table_name)." AND k.column_name=".$this->quoteSmart($column_name)." AND c.constraint_type = 'FOREIGN KEY'";
+			
 		}
 		else
 		{
-			$sql = "SELECT t2.relname AS table1, c2.attname AS col1, c1.attname AS col2 FROM
-				pg_attribute c2 JOIN pg_class t2 JOIN
-				(pg_constraint con JOIN 
-				(pg_class t1 JOIN pg_attribute c1 ON t1.oid = c1.attrelid)
-				ON con.conrelid = t1.oid AND con.conkey[1]=c1.attnum)
-				ON t2.oid = con.confrelid ON c2.attrelid = t2.oid AND con.confkey[1]=c2.attnum
-			WHERE t1.relname='$table_name'";
+			$sql = "SELECT k.column_name col2,
+			ccu.table_name table1,
+			ccu.column_name col1,
+			k.ordinal_position 'field_position'
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND k.table_name=".$this->quoteSmart($table_name)." AND c.constraint_type = 'FOREIGN KEY'";
 		}
 
 		$result = $this->getAll($sql);
@@ -291,7 +322,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function nextId($seq_name, $onDemand = true) {
 		$realSeqName = $this->getSequenceName($seq_name);
 		try {
-			$result = $this->getOne("SELECT NEXTVAL(".$this->quoteSmart($realSeqName).") as nextval");
+			$result = $this->getOne("SELECT NEXT VALUE FOR (".$this->quoteSmart($realSeqName).") as nextval");
 		} catch (PDOException $e) {
 			if ($e->getCode() == '42P01' && $onDemand) {
              	// ONDEMAND TABLE CREATION
@@ -341,13 +372,14 @@ class MsSqlConnection extends AbstractDBConnection {
 			$dbColumn = new Column();
 			$dbColumn->name = $column['column_name'];
 			// Let's compute the type:
-			$type = $column['udt_name'];
-			if ($type == "varchar") {
+			$type = $column['data_type'];
+			if ($type == "nvarchar" || $type == "nchar") {
 				$type .= '('.$column['character_maximum_length'].')';
 			}
 			$dbColumn->type = $type;
 			$dbColumn->nullable = $column['is_nullable'] == 'YES'; 
 			$dbColumn->default = $column['column_default'];
+			$dbColumn->autoIncrement = $column['is_identity'] == 1;
 			
 			// TODO: initialize the Autoincrement value one way or the other!
 			//$dbColumn->autoIncrement = $column['extra'] == 'auto_increment';
@@ -378,10 +410,10 @@ class MsSqlConnection extends AbstractDBConnection {
      * @return bool
      */
     public function checkDatabaseExists($dbName) {
-		$dbs = $this->getAll("select * from pg_database");
+		$dbs = $this->getAll("select * from sys.databases");
 		foreach ($dbs as $db_name)
 		{
-			if (strtolower($db_name['datname'])==$dbName)
+			if (strtolower($db_name['name'])==$dbName)
 				return true;
 		}
 		return false;
@@ -396,7 +428,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function setSequenceId($table_name, $id) {
 		$seq_name = $this->getSequenceName($table_name);
 		
-		$this->exec("SELECT setval('$seq_name', '$id')");
+		$this->exec("ALTER SEQUENCE $seq_name RESTART WITH $id");
 	}
 	
 	/**
@@ -405,7 +437,13 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @return array<string>
 	 */
 	public function getDatabaseList() {
-		throw new Exception("Not implemented yet");
+		$dbs = $this->getAll("select * from sys.databases");
+		$list = array();
+		foreach ($dbs as $db_name)
+		{
+			$list[] = $db_name['name'];
+		}
+		return $list;
 	}
 	
 	/**
@@ -492,7 +530,9 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function getTableInfo($tableName) {
 		// TODO: EXTEND THIS TO RETRIEVE descriptions (seems to be only available in pg_description table)
 		
-		$str = "SELECT c.*, tc.constraint_type FROM information_schema.COLUMNS c
+		$str = "SELECT c.*, tc.constraint_type,
+				COLUMNPROPERTY(object_id(c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY
+			 FROM information_schema.COLUMNS c
 				   LEFT JOIN (information_schema.constraint_column_usage co
 				        JOIN information_schema.table_constraints tc
 				        ON (co.constraint_name = tc.constraint_name AND co.table_name = tc.table_name))
@@ -501,7 +541,15 @@ class MsSqlConnection extends AbstractDBConnection {
 
 		$res = $this->getAll($str);
 		
-		return $res;
+		// Let's lower case the columns name, in order to get a consistent behaviour with PgSQL
+		$arr = array();
+		foreach ($res as $nbrow=>$row) {
+			foreach ($row as $key=>$value) {
+				$arr[$nbrow][strtolower($key)] = $value;	
+			}
+		}
+		
+		return $arr;
 	}
 	
 	/**

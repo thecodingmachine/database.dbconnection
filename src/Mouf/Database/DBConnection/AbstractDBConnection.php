@@ -281,7 +281,6 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 * @return array<Column> an array of the primary key columns of the table
 	 */
 	public function getPrimaryKey($table_name) {
-
 		$table = $this->getTableFromDbModel($table_name);
 		return $table->getPrimaryKeys();
 	}
