@@ -7,9 +7,11 @@ use PDO;
  * This class can be used to cache the requests describing the database model.
  * 
  * @Component
+ * @Renderer { "smallLogo":"vendor/mouf/database.dbconnection/icons/database_small.png" }
  */
 class CachedConnection implements ConnectionInterface {
 	
+	// FIXME: WHY THE HELL IS THE CACHE_KEY STATIC??????
 	private static $CACHE_KEY = "__Connection__";
 	
 	/**

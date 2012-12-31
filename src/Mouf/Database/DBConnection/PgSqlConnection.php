@@ -8,6 +8,7 @@ use PDOException;
  * A class wrapping a connection to a PgSQL database through PDO, with additional goodies (introspection support)
  *
  * @Component
+ * @Renderer { "smallLogo":"vendor/mouf/database.dbconnection/icons/database_small.png" }
  */
 class PgSqlConnection extends AbstractDBConnection {
 	
@@ -75,7 +76,7 @@ class PgSqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function getDsn() {
-		if ($this->host) {
+		if ($this->dbname) {
 			$dsn = "pgsql:host=".$this->host.";dbname=".$this->dbname.";";
 		} else {
 			$dsn = "pgsql:host=".$this->host.";dbname=template0;";

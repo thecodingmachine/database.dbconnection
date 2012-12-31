@@ -1,45 +1,46 @@
 <?php
-namespace Mouf\Database\DBConnection;
+namespace Mouf\Database\DBConnection; 
 
 use PDO;
 use PDOException;
 
 /**
- * A class wrapping a connection to a MsSQL database through PDO, with additional goodies (introspection support)
- * 
- * INFO:
- * Il est possible de faire un export avec compatibilité grace à l'option
- * mysqldump --compatible=mssql 
- * 
- * LIBRARY:
- * http://msdn.microsoft.com/fr-fr/library/ff848799.aspx
- * 
- * INFORMATION_SCHEMA:
- * http://www.mssqltips.com/sqlservertutorial/179/sql-server-informationschema-views/
+ * A class wrapping a connection to a SQLServer database through PDO/ODBC, with additional goodies (introspection support)
  *
  * @Component
- * @Logo "mylogo.png"
+ * @Renderer { "smallLogo":"vendor/mouf/database.dbconnection/icons/database_small.png" }
  */
 class MsSqlConnection extends AbstractDBConnection {
 	
 	/**
-	 * The host for the database.
-	 * This is the IP or the URL of the server hosting the database.
+	 * The name of the ODBC driver to access SQL Server.
+	 * <p>On Windows, you can find that name by:</o>
+	 * <ul><li>Starting the "ODBC datasources" application</li>
+	 * <li>Going in the "ODBC Drivers" tab</li>
+	 * <li>Selecting the appropriate driver in the "Name" column</li></ul>
 	 *
-	 * @Property
-	 * @Compulsory
+	 * <p>Put the text inside {} if it contains spaces.</p>
+	 * 
+	 * <p>Default value for SQL Server 2012 is {SQL Server Native Client 11.0}</p>
+	 *
 	 * @var string
 	 */
-	public $host;
+	public $odbcDriver = "{SQL Server Native Client 11.0}";
 	
 	/**
-	 * The port for the database.
-	 * Keep empty to use default port.
+	 * The server IP address or name.
+	 * You can use "(local)" if the server if on your machine 
 	 *
-	 * @Property
-	 * @var int
+	 * @var string
 	 */
-	public $port;
+	public $host = "(local)";
+	
+	/**
+	 * The name of the instance of the database.
+	 * 
+	 * @var string
+	 */
+	public $instance = "SQLEXPRESS";
 	
 	/**
 	 * Database user to use when connecting.
@@ -47,7 +48,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @Property
 	 * @var string
 	 */
-	public $user;
+	public $user = "sa";
 	
 	/**
 	 * Password to use when connecting.
@@ -58,27 +59,25 @@ class MsSqlConnection extends AbstractDBConnection {
 	public $password;
 	
 	/**
-	 * Charset used to communicate with the database.
-	 * The database will translate any string into this charset before sending us the string.
-	 * If not set, this will default to UTF8
-	 *
-	 * @Property
+	 * Keep this parameter empty.
+	 * You can optionnally set it and it will completely OVERRIDE all parameters used to
+	 * create the connection to the database.
+	 * 
 	 * @var string
 	 */
-	public $charset;
-	
+	public $fullOdbcString;
+
 	/**
 	 * Whether a persistent connection is used or not.
 	 * If this application is used on the web, you should choose yes. The database connection
 	 * will not be closed when the script stops and will be reused on the next connection.
 	 * This will help improve your application's performance. 
 	 *
-	 * This defaults to "false"
+	 * This defaults to "true"
 	 * 
-	 * @Property
 	 * @var boolean
 	 */
-	public $isPersistentConnection = false;
+	public $isPersistentConnection;
 	
 	/**
 	 * Returns the DSN for this connection.
@@ -86,18 +85,15 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function getDsn() {
-		//osql -U<login id> -P<password> -S<instance name> -i<tsql script file name>
-		//ODBC;DRIVER=SQL Server;SERVER=serverName;DATABASE=databaseName;Trusted_Connection=Yes
-		//DSN=fred|Database=dave
-		$dsn = "DSN=".$this->user."|Database=".$this->dbname;
-		if (!empty($this->port)) {
-			$dsn .= "|Port=".$this->port;
+		if ($this->fullOdbcString) {
+			$dsn = $this->fullOdbcString;
+		} else {
+			$dsn = "odbc:Driver=".$this->odbcDriver.";Server=".$this->host;
+			if ($this->instance) {
+				$dsn .= "\\".$this->instance;
+			}
+			$dsn .= ";Database=".$this->dbname.";Uid=".$this->user.";Pwd=".$this->password.";";
 		}
-		$charset = $this->charset;
-		if (empty($charset)) {
-			$charset = "UTF8";
-		}
-		$dsn .= "|Charset=".$charset.";";
 		
 		return $dsn;
 	}
@@ -127,11 +123,10 @@ class MsSqlConnection extends AbstractDBConnection {
 	 */
 	public function getOptions() {
 		$options = array();
-		if ($this->isPersistentConnection == true) {
+		if ($this->isPersistentConnection != "No") {
 			$options[PDO::ATTR_PERSISTENT] = true;
 		}
 		$options[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
-		
 		return $options;
 	}
 	
@@ -144,95 +139,6 @@ class MsSqlConnection extends AbstractDBConnection {
 		parent::__construct();
 	}
 	
-	
-	/**
-	 * Creates a new table in the database.
-	 *
-	 * @param Table $table The table to create
-	 * @param boolean $dropIfExist whether the table should be dropped or not if it exists.
-	 */
-	public function createTable(Table $table, $dropIfExist = false) {
-		$tableName = $table->name;
-		$columnsList = $table->columns;
-		
-		if ($dropIfExist) {
-			$sql = "
-				IF OBJECT_ID('$tableName', 'U') IS NOT NULL
-  					DROP TABLE $tableName";
-			$this->exec($sql);
-		}
-		
-		//$sql = "CREATE TABLE $tableName (\n  ID BIGINT NOT NULL AUTO_INCREMENT,";
-		$sql = "
-			IF OBJECT_ID('$tableName', 'U') IS NULL
-  					CREATE TABLE $tableName (\n";
-		$first = true;
-		$primaryKeyList = array();
-		foreach ($columnsList as $column) {
-			if (!$first) {
-				$sql .= ",\n";
-			} else {
-				$first = false;
-			}
-			$sql .= "  ".$column->name." ".$column->type." ";
-			if ($column->nullable) {
-				$sql .= "NULL";
-			} else {
-				$sql .= "NOT NULL";
-			}
-			if ($column->default != null) {
-				$sql .= " DEFAULT ".$column->default;
-			}
-			if ($column->autoIncrement) {
-				// #graine : previous // FIXME: comment gérer le #graine ?
-				// #pas = 1
-				$sql .= " IDENTITY [ ( #graine , #pas ) ";
-			}
-			if ($column->comment) {
-				$sql .= " COMMENT '".mysql_escape_string($column->comment)."'";
-			}
-			
-			if ($column->isPrimaryKey) {
-				$primaryKeyList[] = $column->name;
-			}
-		}
-		
-		if (!empty($primaryKeyList)) {
-			$sql .= ",\n  PRIMARY KEY (".implode(", ", $primaryKeyList).")";
-		}
-		//$sql .= ",\n  PRIMARY KEY (ID)";
-		
-		$sql .= ");\n";
-		//echo $sql;
-		$this->exec($sql);
-	}
-	
-	/**
-	 * Creates a new index in the database.
-	 *
-	 * @param string $tableName
-	 * @param array<string> $columnsList
-	 * @param boolean $isUnique whether the index is unique or not.
-	 * @param string $indexName The index name, generated if not specified.
-	 */
-	public function createIndex($tableName, $columnsList, $isUnique, $indexName=null) {
-		if ($indexName == null) {
-			$indexName = "IDX_".$tableName."_".implode("_", $columnsList); 
-		}
-		
-		// Let's keep the index name short.
-		if (strlen($indexName)>40) {
-			$newIndexName = substr($indexName, 0, 20);
-			$newIndexName .= '_'.md5($indexName);
-			$indexName = $newIndexName; 
-		}
-	
-		$sql = "CREATE ";
-		$sql .= $isUnique?"UNIQUE ":"";
-		$sql .= "INDEX $indexName ON $tableName (".implode(", ", $columnsList).");";
-		$this->exec($sql);
-	}
-	
 	/**
 	 * Returns Root Sequence Table for $table_name
 	 * i.e. : if "man" table inherits "human" table , returns "human" for Root Sequence Table
@@ -243,7 +149,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function findRootSequenceTable($table_name){
 		return $table_name;
 	}
-	
+		
 	/**
 	 * Returns the parent table (if the table inherits from another table).
 	 * For DB systems that do not support inheritence, returns the table name.
@@ -252,18 +158,16 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function getParentTable($table_name){
-		// No inheritance for Mysql
+		// No inheritance for Mssql
 		return $table_name;
 	}
+
 	
 	/**
 	 * Returns the constraints on table "table_name" and column "column_name" if "column_name"is given
 	 * this function returns an array of arrays of the form:
 	 * ("table2"=>"name of the constraining table", "col2"=>"name of the constraining column", "col1"=>"name
 	 * of the constrained column")
-	 * 
-	 * FIXME: REFERENCED_TABLE_NAME ne semble pas exister
-	 * Remplacé par INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS ?
 	 *
 	 * @param string $table_name
 	 * @param string $column_name
@@ -272,11 +176,48 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function getConstraintsOnTable($table_name,$column_name=false) {
 		if ($column_name)
 		{
-			$sql = "SELECT DISTINCT column_name as col1, referenced_table_name as table2, referenced_column_name as col2 FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA='".$this->dbname."' AND TABLE_NAME='$table_name' AND COLUMN_NAME='$column_name'";
+			$sql = "SELECT k.table_name table2,
+			k.column_name col2,
+			ccu.column_name col1
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND ccu.table_name=".$this->quoteSmart($table_name)." AND ccu.column_name=".$this->quoteSmart($column_name)." AND c.constraint_type = 'FOREIGN KEY'";
+			
 		}
 		else
 		{
-			$sql = "SELECT DISTINCT column_name as col1, referenced_table_name as table2, referenced_column_name as col2 FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA='".$this->dbname."' AND TABLE_NAME='$table_name'";
+			$sql = "SELECT k.table_name table2,
+			k.column_name col2,
+			ccu.column_name col1
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND ccu.table_name=".$this->quoteSmart($table_name)." AND c.constraint_type = 'FOREIGN KEY'";
 		}
 
 		$result = $this->getAll($sql);
@@ -289,160 +230,131 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * this function returns an array of arrays of the form:
 	 * ("table1"=>"name of the constrained table", "col1"=>"name of the constrained column", "col2"=>"name
 	 * of the constraining column")
-	 * 
-	 * FIXME: REFERENCED_TABLE_NAME ne semble pas exister
-	 * Remplacé par INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS ?
-	 * 
+	 *
 	 * @param string $table_name
 	 * @param string $column_name
 	 * @return unknown
 	 */
 	public function getConstraintsFromTable($table_name,$column_name=false) {
-		if ($column_name)
+	if ($column_name)
 		{
-			$sql = "SELECT DISTINCT referenced_column_name as col2, table_name as table1, column_name as col1 FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA='".$this->dbname."' AND referenced_table_name='$table_name' AND referenced_column_name='$column_name'";
+			$sql = "SELECT k.column_name col2,
+			ccu.table_name table1,
+			ccu.column_name col1,
+			k.ordinal_position 'field_position'
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND k.table_name=".$this->quoteSmart($table_name)." AND k.column_name=".$this->quoteSmart($column_name)." AND c.constraint_type = 'FOREIGN KEY'";
+			
 		}
 		else
 		{
-			$sql = "SELECT DISTINCT referenced_column_name as col2, table_name as table1, column_name as col1 FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA='".$this->dbname."' AND referenced_table_name='$table_name'";
+			$sql = "SELECT k.column_name col2,
+			ccu.table_name table1,
+			ccu.column_name col1,
+			k.ordinal_position 'field_position'
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+			LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+			ON k.table_name = c.table_name
+			AND k.table_schema = c.table_schema
+			AND k.table_catalog = c.table_catalog
+			AND k.constraint_catalog = c.constraint_catalog
+			AND k.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			ON rc.constraint_schema = c.constraint_schema
+			AND rc.constraint_catalog = c.constraint_catalog
+			AND rc.constraint_name = c.constraint_name
+			LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu
+			ON rc.unique_constraint_schema = ccu.constraint_schema
+			AND rc.unique_constraint_catalog = ccu.constraint_catalog
+			AND rc.unique_constraint_name = ccu.constraint_name
+			WHERE k.constraint_catalog = ".$this->quoteSmart($this->dbname)." AND k.table_name=".$this->quoteSmart($table_name)." AND c.constraint_type = 'FOREIGN KEY'";
 		}
 
 		$result = $this->getAll($sql);
 
 		return $result;
 	}
-	
-	/**
-	 * Returns true if the table exists, false if it does not.
-	 *
-	 * @param string $tableName The name of the table.
-	 * @return bool
-	 */
-	public function isTableExist($tableName) {
-		
-		
-		$str = "SELECT COUNT(1) as cnt FROM information_schema.TABLES WHERE table_name = ".$this->quoteSmart($tableName)." AND table_schema = ".$this->quoteSmart($this->dbname)." ;";
 
-		$res = $this->getOne($str);
-		
-		return $res != 0;
-	}
-	
 	
 	/**
-	 * Sets the host (DB server URL) for the connection.
+	 * Creates a new table in the database.
 	 *
-	 * @param string $host
+	 * @param Table $table The table to create
+	 * @param boolean $dropIfExist whether the table should be dropped or not if it exists.
 	 */
-	public function setHost($host) {
-		$this->host = $host;
+	public function createTable(Table $table, $dropIfExist = false) {
+		throw new Exception("Method not implemented yet");
 	}
 	
 	/**
-	 * Sets the DB port for the connection.
+	 * Creates a new index in the database.
 	 *
-	 * @param int $host
+	 * @param string $tableName
+	 * @param array<string> $columnsList
+	 * @param boolean $isUnique whether the index is unique or not.
+	 * @param string $indexName The index name, generated if not specified.
 	 */
-	public function setPort($port) {
-		$this->port = $port;
-	}
-
-	/**
-	 * Sets the database name we need to connect to.
-	 *
-	 * @param string $dbName
-	 */
-	public function setDbName($dbName) {
-		$this->dbname = $dbName;
-	}
-	
-	/**
-	 * Sets the user name for the connection.
-	 *
-	 * @param string $user
-	 */
-	public function setUser($user) {
-		$this->user = $user;
-	}
-	
-	/**
-	 * Sets the password for the connection.
-	 *
-	 * @param string $password
-	 */
-	public function setPassword($password) {
-		$this->password = $password;
+	public function createIndex($tableName, $columnsList, $isUnique, $indexName=null) {
+		throw new Exception("Method not implemented yet");
 	}
 	
 	/**
 	 * Returns the next Id from the sequence.
-	 * 
-	 * FIXME: LAST_INSERT_ID est remplacé par @@identity ou scope_identity()
 	 *
 	 * @param string $seq_name The name of the sequence
 	 * @param boolean $onDemand If true, if the sequence does not exist, it will be created.
 	 * @return int The next value of the sequence
 	 */
 	public function nextId($seq_name, $onDemand = true) {
-		$seqname = $this->getSequenceName($seq_name);
-        //do {
-        //$repeat = 0;
-        try {
-        	$nbAff = $this->exec('UPDATE ' . $seqname
-                               . ' SET id = scope_identity(id + 1)');
-        } catch (PDOException $e) {
-        	if ($e->getCode() == '42S02' && $onDemand) {
-             // ONDEMAND TABLE CREATION
-             $result = $this->createSequence($seq_name);
+		$realSeqName = $this->getSequenceName($seq_name);
+		try {
+			$result = $this->getOne("SELECT NEXT VALUE FOR (".$this->quoteSmart($realSeqName).") as nextval");
+		} catch (PDOException $e) {
+			if ($e->getCode() == '42P01' && $onDemand) {
+             	// ONDEMAND TABLE CREATION
+             	$result = $this->createSequence($seq_name);
 
-             return 1;
+             	return 1;
         	} else {
         		throw $e;	
         	}
-        }
-	}
-	
-	public function createSequence($seq_name)
-    {
-        $seqname = $this->getSequenceName($seq_name);
-        $res = $this->exec('CREATE TABLE ' . $seqname
-                            . ' (id INTEGER UNSIGNED IDENTITY NOT NULL,'
-                            . ' PRIMARY KEY(id))');
-        
-        // insert yields value 1, nextId call will generate ID 2
-        $this->exec("INSERT INTO ${seqname} (id) VALUES (0)");
-    }
-    
-    /**
-	 * Returns the table columns.
-	 *
-	 * @param string $tableName
-	 * @return array<array> An array representing the columns for the specified table.
-	 */
-	public function getTableInfo($tableName) {
-		
-		$str = "SELECT * FROM information_schema.COLUMNS WHERE table_name = ".$this->quoteSmart($tableName)." AND table_schema = ".$this->quoteSmart($this->dbname)." ;";
-
-		$res = $this->getAll($str);
-
-		// Let's lower case the columns name, in order to get a consistent behaviour with PgSQL
-		$arr = array();
-		foreach ($res as $nbrow=>$row) {
-			foreach ($row as $key=>$value) {
-				$arr[$nbrow][strtolower($key)] = $value;	
-			}
 		}
 		
-		return $arr;
+		return $result;
 	}
 	
     /**
-	 * Returns a table object (Table) from the database.
-	 * Throws an exception if the table does not exist. 
+     * Creates a sequence with the name specified.
+     * Note: The name is transformed be the getSequenceName method.
+     * By default, if "mytable" is passed, the name of the sequence will be "mytable_pk_seq".
+     *
+     * @param string $seq_name
+     */
+    public function createSequence($seq_name) {
+    	$realSeqName = $this->getSequenceName($seq_name);
+    	$sql = 'CREATE SEQUENCE '.$realSeqName;
+    	$this->exec($sql);
+    }
+	
+    /**
+	 * Returns a table object (Table) from the database. 
 	 *
 	 * @param string $tableName
 	 * @return Table
-	 * @throws DBConnectionException
 	 */
 	public function getTableFromDbModel($tableName) {
 		// Check that the table exist.
@@ -459,23 +371,24 @@ class MsSqlConnection extends AbstractDBConnection {
 		foreach ($tableInfo as $column) {
 			$dbColumn = new Column();
 			$dbColumn->name = $column['column_name'];
-			$dbColumn->type = $column['column_type'];
+			// Let's compute the type:
+			$type = $column['data_type'];
+			if ($type == "nvarchar" || $type == "nchar") {
+				$type .= '('.$column['character_maximum_length'].')';
+			}
+			$dbColumn->type = $type;
 			$dbColumn->nullable = $column['is_nullable'] == 'YES'; 
 			$dbColumn->default = $column['column_default'];
-			$dbColumn->autoIncrement = $column['extra'] == 'auto_increment';
-			$dbColumn->isPrimaryKey = $column['column_key'] == 'PRI';
-			$dbColumn->comment = $column['column_comment'];
+			$dbColumn->autoIncrement = $column['is_identity'] == 1;
+			
+			// TODO: initialize the Autoincrement value one way or the other!
+			//$dbColumn->autoIncrement = $column['extra'] == 'auto_increment';
+			$dbColumn->isPrimaryKey = $column['constraint_type'] == 'PRIMARY KEY';
 			$dbTable->addColumn($dbColumn);
 		}
+		
 		return $dbTable;
 	}
-	
-	/**
-	 * Local cache for the case sensitivity.
-	 *
-	 * @var bool
-	 */
-	private $caseSensitive = null;
 	
 	/**
      * Returns true if the underlying database is case sensitive, or false otherwise.
@@ -483,7 +396,8 @@ class MsSqlConnection extends AbstractDBConnection {
      * @return bool
      */
 	public function isCaseSensitive() {
-		return $this->caseSensitive;
+		// Pgsql is not case sensitive. Always.
+		return false;
 	}
 	
 	/**
@@ -492,52 +406,20 @@ class MsSqlConnection extends AbstractDBConnection {
      * Of course, a connection must be established for this call to succeed.
      * Please note that you can create a connection without providing a dbname.
      * 
-     * DECLARE @dbname nvarchar(128)
-     * SET @dbname = N'Senna'
-     * 
-     * IF (EXISTS (SELECT name 
-     * FROM master.dbo.sysdatabases 
-     * WHERE ('[' + name + ']' = @dbname 
-     * OR name = @dbname)))
-     * 
      * @param string $dbName
      * @return bool
      */
     public function checkDatabaseExists($dbName) {
-    	// Execute request
-    	$str = "
-    	DECLARE @dbname nvarchar(128)
-		SET @dbname = N'Senna'
-		
-		IF (EXISTS (SELECT name 
-		FROM master.dbo.sysdatabases 
-		WHERE ('[$dbName]' = @dbname 
-		OR name = @dbname)));";
-    	// Get result
-    	$res = $this->getAll($str);
-    	
-    	if(count($res)) {
-    		return true;
-    	}
-    	return false;
-    }
-    
+		$dbs = $this->getAll("select * from sys.databases");
+		foreach ($dbs as $db_name)
+		{
+			if (strtolower($db_name['name'])==$dbName)
+				return true;
+		}
+		return false;
+	}
+	
 	/**
-     * Creates the database.
-     * Of course, a connection must be established for this call to succeed.
-     * Please note that you can create a connection without providing a dbname.
-     * Please also note that the function does not protect the parameter. You will have to protect
-     * it yourself against SQL injection attacks.
-     * 
-     * @param string $dbName
-     */
-    public function createDatabase($dbName) {    	
-    	$this->exec("CREATE DATABASE ".$dbName);
-    	$this->dbname = $dbName;
-    	$this->connect();
-    }
-    
-    /**
 	 * Sets the sequence to the passed value.
 	 *
 	 * @param string $seq_name
@@ -546,7 +428,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	public function setSequenceId($table_name, $id) {
 		$seq_name = $this->getSequenceName($table_name);
 		
-		$this->exec("UPDATE $seq_name SET ID='$id'");
+		$this->exec("ALTER SEQUENCE $seq_name RESTART WITH $id");
 	}
 	
 	/**
@@ -555,15 +437,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @return array<string>
 	 */
 	public function getDatabaseList() {
-		$str = "
-		DECLARE @dbname nvarchar(128)
-		SET @dbname = N'Senna'
-		
-		SELECT name 
-		FROM master.dbo.sysdatabases;";
-    	// Get result
-		$dbs = $this->getAll($str);
-		
+		$dbs = $this->getAll("select * from sys.databases");
 		$list = array();
 		foreach ($dbs as $db_name)
 		{
@@ -587,16 +461,16 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * - datetime
 	 * - date
 	 * 
-	 * @param string $type
+	 * @param $type string
 	 * @return string
 	 */
 	public function getUnderlyingType($type) {
+		// FIXME: adapt the types to PostgreSQL (this are MySQL type below!!!!)
 		$type = strtolower($type);
 		$parenPos = strpos($type, "(");
 		if ($parenPos !== false) {
 			$type = substr($type, 0, $parenPos);
 		}
-		$type = trim($type);
 		
 		switch ($type) {
 			case "int":
@@ -626,38 +500,118 @@ class MsSqlConnection extends AbstractDBConnection {
 	}
 	
 	/**
+     * Creates the database.
+     * Of course, a connection must be established for this call to succeed.
+     * Please note that you can create a connection without providing a dbname.
+     * Please also note that the function does not protect the parameter. You will have to protect
+     * it yourself against SQL injection attacks.
+     * 
+     * @param string $dbName
+     */
+    public function createDatabase($dbName) {
+    	// Overload for Mysql: let's setup the encoding.
+    	/*$charset = $this->charset;
+    	if (empty($this->charset)) {
+    		$charset = "UTF8";
+    	}*/
+    	$charset = "UTF8";
+    	
+    	$this->exec("CREATE DATABASE ".$dbName." TEMPLATE = template0 ENCODING = ".$this->quoteSmart($charset));
+    	$this->dbname = $dbName;
+    	$this->connect();
+    }
+	
+	/**
+	 * Returns the table columns.
+	 *
+	 * @param string $tableName
+	 * @return array<array> An array representing the columns for the specified table.
+	 */
+	public function getTableInfo($tableName) {
+		// TODO: EXTEND THIS TO RETRIEVE descriptions (seems to be only available in pg_description table)
+		
+		$str = "SELECT c.*, tc.constraint_type,
+				COLUMNPROPERTY(object_id(c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY
+			 FROM information_schema.COLUMNS c
+				   LEFT JOIN (information_schema.constraint_column_usage co
+				        JOIN information_schema.table_constraints tc
+				        ON (co.constraint_name = tc.constraint_name AND co.table_name = tc.table_name))
+				        ON (c.table_catalog = co.table_catalog AND c.table_name = co.table_name AND c.column_name = co.column_name)
+				        WHERE c.table_name = ".$this->quoteSmart($tableName)." AND c.table_catalog = ".$this->quoteSmart($this->dbname)." ;";
+
+		$res = $this->getAll($str);
+		
+		// Let's lower case the columns name, in order to get a consistent behaviour with PgSQL
+		$arr = array();
+		foreach ($res as $nbrow=>$row) {
+			foreach ($row as $key=>$value) {
+				$arr[$nbrow][strtolower($key)] = $value;	
+			}
+		}
+		
+		return $arr;
+	}
+	
+	/**
+	 * Returns true if the table exists, false if it does not.
+	 *
+	 * @param string $tableName The name of the table.
+	 * @return bool
+	 */
+	public function isTableExist($tableName) {
+		
+		
+		$str = "SELECT COUNT(1) as cnt FROM information_schema.TABLES WHERE table_name = ".$this->quoteSmart($tableName)." AND table_catalog = ".$this->quoteSmart($this->dbname)." ;";
+
+		$res = $this->getOne($str);
+		
+		return $res != 0;
+	}
+
+	/**
 	 * Escape the table name and column name with the special char that depends of database type
 	 * 
 	 * @param $string string
 	 * @return string
 	 */
 	public function escapeDBItem($string) {
-		return ''.$string.'';
+		return '['.$string.']';
 	}
 	
 	/**
-	 * Performs the connection to the the database.
-	 * This is overloaded because we might want to call 'SET NAMES utf8;'
-	 * to set the connection in UTF8. We might have used 
-	 * $options[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES utf8";
-	 * or $options[1002] = "SET NAMES utf8";
-	 * but this still fails on some computers (especially in Wamp with PHP 5.3.0)
+	 * Returns a list of table names.
 	 *
+	 * 
+	 * @param $ignoreSequences boolean: for some databases, sequences are managed with tables. If true, those tables will be ignored. Default is true.
+	 * @return array<string>
 	 */
-	public function connect() {
-		parent::connect();
-		
-		
-		$charset = strtolower($this->charset);
-		if (empty($charset)) {
-			$charset = "utf-8";
-		}		
-		if ($charset == 'utf8' || $charset == 'utf-8') {
-			$this->dbh->exec("SET NAMES utf8;");
+	public function getListOfTables($ignoreSequences = true) {
+		$str = "SELECT table_name FROM information_schema.TABLES WHERE table_catalog = ".$this->quoteSmart($this->dbname)." AND table_type = 'BASE TABLE';";
+
+		$res = $this->getAll($str);
+		$array = array();
+		foreach ($res as $table) {
+			if (!$ignoreSequences || !$this->isSequenceName($table['table_name'])) {
+				$array[] = $table['table_name'];
+			}
 		}
+
+		return $array;
 	}
 	
+	/**
+	 * Protects the string (by adding \ in front of '), or returns the string NULL if value passed is null.
+	 * TODO: Migrate to use prepared statements!!
+	 *
+	 * @param string $in
+	 * @return string
+	 */
+	public function quoteSmart($in) {
+		// Note: $this->dbh->quote is completely broken with ODBC driver...
+		// So we need to overload this function
+		
+		return "'".addslashes($in)."'";
+	}
 }
-
 
 ?>
