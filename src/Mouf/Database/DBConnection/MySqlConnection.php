@@ -705,6 +705,16 @@ class MySqlConnection extends AbstractDBConnection {
 		}
 	}
 	
+	/**
+	 * Return the last inserted ID for the table passed in parameters.
+	 * 
+	 * @param string $table_name
+	 * @param string $pkey_field_name
+	 */
+	public function getInsertId($table_name,$pkey_field_name) {
+		return $this->dbh->lastInsertId($table_name);
+	}
+	
 }
 
 
