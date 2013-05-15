@@ -328,7 +328,7 @@ class MySqlConnection extends AbstractDBConnection {
 	/**
 	 * Sets the DB port for the connection.
 	 *
-	 * @param int $host
+	 * @param int $port
 	 */
 	public function setPort($port) {
 		$this->port = $port;
