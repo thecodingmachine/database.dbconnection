@@ -38,7 +38,7 @@ interface ConnectionInterface {
 	 * @param string $query
 	 * @param int $from
 	 * @param int $limit
-	 * @return PDOStatement
+	 * @return \PDOStatement
 	 */
 	public function query($query, $from = null, $limit = null);
 	
