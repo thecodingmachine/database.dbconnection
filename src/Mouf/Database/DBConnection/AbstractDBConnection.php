@@ -5,6 +5,7 @@ use PDO;
 use Exception;
 use PDOException;
 use Mouf\Utils\Log\LogInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * An abstract class representing wrapping a connection to PDO with additional goodies (introspection support)
@@ -30,9 +31,10 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 
 	/**
 	 * The logger to use, if any.
+	 * Accepts PSR3 compatible logger or old Mouf loggers for compatibility reasons.
 	 *
 	 * @Property
-	 * @var LogInterface
+	 * @var LoggerInterface|LogInterface
 	 */
 	public $log;
 
@@ -795,7 +797,11 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	private function trace($string, Exception $e=null) {
 		if ($this->log != null) {
-			$this->log->trace($string, $e);
+			if ($this->log instanceof LoggerInterface) {
+				$this->log->debug($string, array('exception'=>$e));
+			} else {
+				$this->log->trace($string, $e);
+			}
 		}
 	}
 
@@ -808,7 +814,11 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	private function debug($string, Exception $e=null) {
 		if ($this->log != null) {
-			$this->log->debug($string, $e);
+			if ($this->log instanceof LoggerInterface) {
+				$this->log->info($string, array('exception'=>$e));
+			} else {
+				$this->log->debug($string, $e);
+			}
 		}
 	}
 
@@ -821,7 +831,11 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	private function info($string, Exception $e=null) {
 		if ($this->log != null) {
-			$this->log->info($string, $e);
+			if ($this->log instanceof LoggerInterface) {
+				$this->log->notice($string, array('exception'=>$e));
+			} else {
+				$this->log->info($string, $e);
+			}
 		}
 	}
 
@@ -834,7 +848,11 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	private function warn($string, Exception $e=null) {
 		if ($this->log != null) {
-			$this->log->warn($string, $e);
+			if ($this->log instanceof LoggerInterface) {
+				$this->log->warning($string, array('exception'=>$e));
+			} else {
+				$this->log->warn($string, $e);
+			}
 		}
 	}
 
@@ -847,7 +865,11 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	private function error($string, Exception $e=null) {
 		if ($this->log != null) {
-			$this->log->error($string, $e);
+			if ($this->log instanceof LoggerInterface) {
+				$this->log->error($string, array('exception'=>$e));
+			} else {
+				$this->log->error($string, $e);
+			}
 		}
 	}
 
@@ -860,7 +882,11 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	private function fatal($string, Exception $e=null) {
 		if ($this->log != null) {
-			$this->log->fatal($string, $e);
+			if ($this->log instanceof LoggerInterface) {
+				$this->log->critical($string, array('exception'=>$e));
+			} else {
+				$this->log->fatal($string, $e);
+			}
 		}
 	}
 }

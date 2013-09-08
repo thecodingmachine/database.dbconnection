@@ -1,40 +1,45 @@
 {
-    "name": "mouf/database.dbconnection",
-    "description": "This package contains object to perform database connections. Connections are performed using the PDO library. Therefore, the PDO extension must be enabled to use this package. This package will allow you to connect to MySql and PostgreSql databases. The DB Connection class has special features to help you get informations about the database schema, and especially about the constraints between tables.",
-    "keywords": ["mouf", "database", "dbconnection"],
-    "homepage": "https://github.com/thecodingmachine/database.dbconnection",
-    "type": "mouf-library",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "David Négrier",
-            "email": "d.negrier@thecodingmachine.com",
-            "homepage": "http://mouf-php.com"
-        }
-    ],
-    "require": {
-    	"php": ">=5.3.0"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "3.7.*"
-    },
-    "autoload": {
-        "psr-0": {
-            "Mouf": "src/"
-        }
-    },
-    "extra": {
-    	"mouf": {
-	    	"install": [
-	    		{
-	    			"type": "url",
-	    			"url": "dbconnectioninstall/"
-	    		}
-	    	],
-    		"require-admin": [
-    			"src/DbConnectionAdmin.php"
-    		],
-    		"logo": "icons/database.png"
-    	}
-    }
+	"name" : "mouf/database.dbconnection",
+	"description" : "This package contains object to perform database connections. Connections are performed using the PDO library. Therefore, the PDO extension must be enabled to use this package. This package will allow you to connect to MySql and PostgreSql databases. The DB Connection class has special features to help you get informations about the database schema, and especially about the constraints between tables.",
+	"type" : "mouf-library",
+	"authors" : [{
+			"name" : "David Négrier",
+			"email" : "d.negrier@thecodingmachine.com",
+			"homepage" : "http://mouf-php.com"
+		}
+	],
+	"keywords" : [
+		"mouf",
+		"database",
+		"dbconnection"
+	],
+	"homepage" : "https://github.com/thecodingmachine/database.dbconnection",
+	"license" : [
+		"MIT"
+	],
+	"require" : {
+		"php" : ">=5.3.0",
+		"psr/log" : "~1.0"
+	},
+	"require-dev" : {
+		"phpunit/phpunit" : "3.7.*"
+	},
+	"autoload" : {
+		"psr-0" : {
+			"Mouf" : "src/"
+		}
+	},
+	"extra" : {
+		"mouf" : {
+			"install" : [{
+					"type" : "url",
+					"url" : "dbconnectioninstall/"
+				}
+			],
+			"logo" : "icons/database.png",
+			"require-admin" : [
+				"src/DbConnectionAdmin.php"
+			]
+		}
+	}
 }
