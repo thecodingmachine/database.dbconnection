@@ -80,7 +80,7 @@ class MySqlConnection extends AbstractDBConnection {
 		// Note: if $host == "localhost", on Unix systems, the Unix socket is used, no matter what.
 		// If a specific port is used, we might assume that we don't want to use the Unix socket.
 		// Therefore, we replace "localhost" with "127.0.0.1"
-		if (!empty($this->port) && !$this->port != 3306 && $this->host == "localhost") {
+		if (!empty($this->port) && $this->host == "localhost") {
 			$host = "127.0.0.1";
 		} else {
 			$host = $this->host;
