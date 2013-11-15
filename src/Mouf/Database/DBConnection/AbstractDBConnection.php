@@ -260,10 +260,10 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 		$parent_table = null;
 		// Primary Keys made of several columns are not handled
 		if (count($primary_key)>1) {
-			throw new TDBM_Exception('Unable to handle multi-column primary keys. <br />\n
+			throw new DBConnectionException('Unable to handle multi-column primary keys. <br />\n
 			Can\'t find Root Sequence Table for table '.$table_name );
 		}elseif (count($primary_key)==0){
-			throw new TDBM_Exception('No primary key for table '.$table_name );
+			throw new DBConnectionException('No primary key for table '.$table_name );
 		}
 		$primary_key = $primary_key[0];
 		$constraint_array = $this->getConstraintsFromTable($table_name);

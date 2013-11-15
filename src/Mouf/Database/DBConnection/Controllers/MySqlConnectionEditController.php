@@ -2,6 +2,7 @@
 namespace Mouf\Database\DBConnection\Controllers;
 
 use Mouf\Controllers\AbstractMoufInstanceController;
+use Mouf\Database\DBConnection\MySqlConnection;
 
 /**
  * The controller to edit MySql connections and to test them!

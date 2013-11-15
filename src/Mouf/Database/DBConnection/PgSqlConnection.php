@@ -173,7 +173,7 @@ class PgSqlConnection extends AbstractDBConnection {
 		}elseif (count($result)==0){
 			$result = null;
 		}else{
-			throw new TDBM_Exception('Several parents found for table '.$table_name.'<br />\n
+			throw new DBConnectionException('Several parents found for table '.$table_name.'<br />\n
 					-> Error : this behavior is not managed by TDBM.');
 		}
 		return $result;
@@ -261,7 +261,7 @@ class PgSqlConnection extends AbstractDBConnection {
 	 * @param boolean $dropIfExist whether the table should be dropped or not if it exists.
 	 */
 	public function createTable(Table $table, $dropIfExist = false) {
-		throw new Exception("Method not implemented yet");
+		throw new DBConnectionException("Method not implemented yet");
 	}
 	
 	/**
@@ -273,7 +273,7 @@ class PgSqlConnection extends AbstractDBConnection {
 	 * @param string $indexName The index name, generated if not specified.
 	 */
 	public function createIndex($tableName, $columnsList, $isUnique, $indexName=null) {
-		throw new Exception("Method not implemented yet");
+		throw new DBConnectionException("Method not implemented yet");
 	}
 	
 	/**
@@ -400,7 +400,7 @@ class PgSqlConnection extends AbstractDBConnection {
 	 * @return array<string>
 	 */
 	public function getDatabaseList() {
-		throw new Exception("Not implemented yet");
+		throw new DBConnectionException("Not implemented yet");
 	}
 	
 	/**

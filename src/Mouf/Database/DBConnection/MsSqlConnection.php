@@ -297,7 +297,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @param boolean $dropIfExist whether the table should be dropped or not if it exists.
 	 */
 	public function createTable(Table $table, $dropIfExist = false) {
-		throw new Exception("Method not implemented yet");
+		throw new DBConnectionException("Method not implemented yet");
 	}
 	
 	/**
@@ -309,7 +309,7 @@ class MsSqlConnection extends AbstractDBConnection {
 	 * @param string $indexName The index name, generated if not specified.
 	 */
 	public function createIndex($tableName, $columnsList, $isUnique, $indexName=null) {
-		throw new Exception("Method not implemented yet");
+		throw new DBConnectionException("Method not implemented yet");
 	}
 	
 	/**

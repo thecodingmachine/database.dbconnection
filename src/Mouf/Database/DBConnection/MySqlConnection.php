@@ -77,7 +77,16 @@ class MySqlConnection extends AbstractDBConnection {
 	 * @return string
 	 */
 	public function getDsn() {
-		$dsn = "mysql:host=".$this->host.";dbname=".$this->dbname.";";
+		// Note: if $host == "localhost", on Unix systems, the Unix socket is used, no matter what.
+		// If a specific port is used, we might assume that we don't want to use the Unix socket.
+		// Therefore, we replace "localhost" with "127.0.0.1"
+		if (!empty($this->port) && !$this->port != 3306 && $this->host == "localhost") {
+			$host = "127.0.0.1";
+		} else {
+			$host = $this->host;
+		}
+		
+		$dsn = "mysql:host=".$host.";dbname=".$this->dbname.";";
 		if (!empty($this->port)) {
 			$dsn .= "port=".$this->port.";";
 		}
@@ -86,7 +95,6 @@ class MySqlConnection extends AbstractDBConnection {
 			$charset = "UTF8";
 		}
 		$dsn .= "charset=".$charset.";";
-		
 		return $dsn;
 	}
 
@@ -542,7 +550,7 @@ class MySqlConnection extends AbstractDBConnection {
 			$case_sensitive_result = $this->getAll("SHOW VARIABLES WHERE Variable_name = 'lower_case_table_names'");
 
 			if (count($case_sensitive_result)==0) {
-				throw new TDBM_Exception('Unable to retrieve case sensitivity for your MySQL database.<br />\nPlease note only MySQL 5+ is supported.');
+				throw new DBConnectionException('Unable to retrieve case sensitivity for your MySQL database.<br />\nPlease note only MySQL 5+ is supported.');
 			}
 			if ($case_sensitive_result[0]['Value'] == 1 || $case_sensitive_result[0]['Value'] == 2) {
 				$this->caseSensitive = false;
