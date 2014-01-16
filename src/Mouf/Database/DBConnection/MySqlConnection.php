@@ -489,12 +489,13 @@ class MySqlConnection extends AbstractDBConnection {
 
 		// Let's lower case the columns name, in order to get a consistent behaviour with PgSQL
 		$arr = array();
+		
 		foreach ($res as $nbrow=>$row) {
 			foreach ($row as $key=>$value) {
 				$arr[$nbrow][strtolower($key)] = $value;	
 			}
 		}
-		
+				
 		return $arr;
 	}
 	
@@ -522,7 +523,10 @@ class MySqlConnection extends AbstractDBConnection {
 			$dbColumn = new Column();
 			$dbColumn->name = $column['column_name'];
 			$dbColumn->type = $column['column_type'];
-			$dbColumn->nullable = $column['is_nullable'] == 'YES'; 
+			
+			//Warning, if the locale is set to Turkish, the I is lowercased to something else that i, therefore, we must call strtolower each time.
+			$dbColumn->nullable = $column[strtolower('IS_NULLABLE')] == 'YES'; 
+			
 			$dbColumn->default = $column['column_default'];
 			$dbColumn->autoIncrement = $column['extra'] == 'auto_increment';
 			$dbColumn->isPrimaryKey = $column['column_key'] == 'PRI';
