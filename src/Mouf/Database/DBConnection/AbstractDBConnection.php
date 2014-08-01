@@ -889,6 +889,19 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 			}
 		}
 	}
+
+    /**
+     * Set PDO Attribute
+     *
+     * @param int $attribute
+     * @param mixed $value
+     */
+    public function setPDOAttribute($attribute, $value){
+        if ($this->dbh == null) {
+            $this->connect();
+        }
+        $this->dbh->setAttribute($attribute, $value);
+    }
 }
 
 
