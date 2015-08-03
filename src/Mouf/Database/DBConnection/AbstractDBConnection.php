@@ -220,6 +220,9 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 		if ($in === null) {
 			return 'NULL';
 		}
+        if(!is_scalar($in) && (!is_object($in) || !method_exists($in,'__toString'))) {
+            throw new DBConnectionException("Quoted values must be scalars (or object with toString method). Passed type : ".gettype($in));
+        }
 		
 		return $this->dbh->quote($in);
 	}
