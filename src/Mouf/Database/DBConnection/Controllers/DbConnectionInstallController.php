@@ -198,7 +198,7 @@ class DbConnectionInstallController extends Controller  {
 		
 		try {
 			$dbList = $conn->getDatabaseList();
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			// If bad parameters are passed, let's just return an empty list.
 			echo "[]";
 			return;
