@@ -48,6 +48,10 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 */
 	protected $transactionLevel = 0;
 
+    protected $tolowercaseCache = array();
+
+    protected $tolowercaseColumnCache = array();
+
 	/*public $db;
 	 public $dsn;
 	 public $options;
@@ -498,12 +502,15 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 * @return bool
 	 */
 	function toStandardcase($string) {
+        if (isset($this->tolowercaseCache[$string])) {
+            return $this->tolowercaseCache[$string];
+        }
 		$caseSensitive = $this->isCaseSensitive();
 
 		if ($caseSensitive) {
-			return $string;
+			return $this->tolowercaseCache[$string] = $string;
 		} else {
-			return strtolower($string);
+			return $this->tolowercaseCache[$string] = strtolower($string);
 		}
 	}
 
@@ -518,7 +525,10 @@ abstract class AbstractDBConnection implements ConnectionSettingsInterface, Conn
 	 *
 	 */
 	function toStandardcaseColumn($string) {
-		return strtolower($string);
+        if (isset($this->tolowercaseColumnCache[$string])) {
+            return $this->tolowercaseColumnCache[$string];
+        }
+		return $this->tolowercaseColumnCache[$string] = strtolower($string);
 	}
 
 	/**
